@@ -24,19 +24,27 @@ knitt run --entrypoint COMMAND --pod-template PATH_TO_TEMPLATE [flags]
 
 Flags:
 
--e, --entry-point string        Command to run to start test
+-e, --entry-point string        
+Command to run to start test
 
--s, --fail-silently             If set to true non-zero exit code of entrypoint will not cause the command to fail
+-s, --fail-silently             
+If set to true non-zero exit code of entrypoint will not cause the command to fail
 
--h, --help                      help for run
+-h, --help                      
+help for run
 
--d, --local-directory string    Local directory containing test project or scripts (default ".")
+-d, --local-directory string    
+Local directory containing test project or scripts (default ".")
 
--n, --namespace string          Kubernetes namespace to deploy test pod to (default "default")
+-n, --namespace string          
+Kubernetes namespace to deploy test pod to (default "default")
 
--p, --pod-template string       Path to yaml file containing pod template
+-p, --pod-template string       
+Path to yaml file containing pod template
 
--r, --remote-directory string   Remote directory where test scripts will be copied to (default "/home")
+-r, --remote-directory string   
+Remote directory where test scripts will be copied to (default "/home")
 
--t, --timeout string            Time that the test pod should be left alive for after tests have completed. Examples: 1h, 60s, 30m, 1h10m10s (default "0s")
+-t, --timeout string            
+Time that the test pod should be left alive for after tests have completed. Examples: 1h, 60s, 30m, 1h10m10s (default "0s")
 
