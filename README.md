@@ -6,6 +6,7 @@ A tool used to automated integration tests of services in kubernetes namespaces.
 Offers reliability in that tests are ran against services in a more production like environment.
 
 Short explanation:
+
 A test pod is deployed into the target namespace containing the user made test scripts, those scripts are ran and the logs are sent to stdout. The test resources are then removed.
 
 A detailed workflow:
@@ -24,18 +25,11 @@ knitt run --entrypoint COMMAND --pod-template PATH_TO_TEMPLATE [flags]
 Flags:
 
 -e, --entry-point string        Command to run to start test
-
 -s, --fail-silently             If set to true non-zero exit code of entrypoint will not cause the command to fail
-
 -h, --help                      help for run
-
 -d, --local-directory string    Local directory containing test project or scripts (default ".")
-
 -n, --namespace string          Kubernetes namespace to deploy test pod to (default "default")
-
 -p, --pod-template string       Path to yaml file containing pod template
-
 -r, --remote-directory string   Remote directory where test scripts will be copied to (default "/home")
-
 -t, --timeout string            Time that the test pod should be left alive for after tests have completed. Examples: 1h, 60s, 30m, 1h10m10s (default "0s")
 
