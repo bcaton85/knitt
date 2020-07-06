@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os/exec"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -27,21 +26,22 @@ type TestDriver struct {
 	entryPoint      string
 	failSilently    bool
 	timeout         string
+	k               IKubectl
 }
 
 func (t *TestDriver) createTestPod() {
 	log.Println("Applying objects...")
-	runKubectl(false, "apply", "-f", t.podTemplatePath, "-n", t.namespace)
-	runKubectl(false, "wait", "--for=condition=Ready", fmt.Sprintf("pod/%s", getPodName(t.podTemplatePath)), "-n", t.namespace)
+	t.k.runKubectl(false, "apply", "-f", t.podTemplatePath, "-n", t.namespace)
+	t.k.runKubectl(false, "wait", "--for=condition=Ready", fmt.Sprintf("pod/%s", getPodName(t.podTemplatePath)), "-n", t.namespace)
 }
 
 func (t *TestDriver) copyArtifactsToTestPod() {
-	runKubectl(false, "cp", t.localDirectory, fmt.Sprintf("%s:%s", getPodName(t.podTemplatePath), t.remoteDirectory), "-n", t.namespace)
+	t.k.runKubectl(false, "cp", t.localDirectory, fmt.Sprintf("%s:%s", getPodName(t.podTemplatePath), t.remoteDirectory), "-n", t.namespace)
 }
 
 func (t *TestDriver) runTest() {
 	fmt.Println("Running test...")
-	runKubectl(true, "exec", "-it", "-n", t.namespace, getPodName(t.podTemplatePath), "--", "/bin/sh", "-c", t.entryPoint)
+	t.k.runKubectl(true, "exec", "-it", "-n", t.namespace, getPodName(t.podTemplatePath), "--", "/bin/sh", "-c", t.entryPoint)
 }
 
 func (t *TestDriver) cleanUpResources() {
@@ -52,16 +52,7 @@ func (t *TestDriver) cleanUpResources() {
 	time.Sleep(duration)
 
 	log.Println("Cleaning up test pod...")
-	runKubectl(false, "delete", "pod", getPodName(t.podTemplatePath), "-n", t.namespace)
-}
-
-func runKubectl(failSilently bool, kubectlOptions ...string) {
-	cmd := exec.Command("kubectl", kubectlOptions...)
-	stdout, err := cmd.Output()
-	if err != nil && !failSilently {
-		log.Fatalf("Test entrypoint returned non-zero exit code: %s", err)
-	}
-	log.Println(string(stdout))
+	t.k.runKubectl(false, "delete", "pod", getPodName(t.podTemplatePath), "-n", t.namespace)
 }
 
 type podtemplate struct {

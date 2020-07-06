@@ -57,6 +57,7 @@ A detailed workflow:
 			entryPoint:      entryPoint,
 			failSilently:    failSilently,
 			timeout:         timeout,
+			k:               &Kubectl{},
 		})
 	},
 }
