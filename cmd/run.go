@@ -17,13 +17,9 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os/exec"
-	"time"
 
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 var runCmd = &cobra.Command{
@@ -45,13 +41,28 @@ A detailed workflow:
 			log.Println("Additional arguments were given and will be ignored")
 		}
 
-		executeTest(cmd)
+		podTemplatePath, _ := cmd.Flags().GetString("pod-template")     //check err in the future, probably move it to separate function
+		namespace, _ := cmd.Flags().GetString("namespace")              //check err in the future, probably move it to separate function
+		localDirectory, _ := cmd.Flags().GetString("local-directory")   //check err in the future, probably move it to separate function
+		remoteDirectory, _ := cmd.Flags().GetString("remote-directory") //check err in the future, probably move it to separate function
+		entryPoint, _ := cmd.Flags().GetString("entry-point")           //check err in the future, probably move it to separate function
+		timeout, _ := cmd.Flags().GetString("timeout")                  //check err in the future, probably move it to separate function
+		failSilently, _ := cmd.Flags().GetBool("fail-silently")         //check err in the future, probably move it to separate function
+
+		executeTest(&TestDriver{
+			podTemplatePath: podTemplatePath,
+			namespace:       namespace,
+			localDirectory:  localDirectory,
+			remoteDirectory: remoteDirectory,
+			entryPoint:      entryPoint,
+			failSilently:    failSilently,
+			timeout:         timeout,
+		})
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(runCmd)
-
 	runCmd.Flags().StringP("local-directory", "d", ".", "Local directory containing test project or scripts")
 	runCmd.Flags().StringP("remote-directory", "r", "/home", "Remote directory where test scripts will be copied to")
 	runCmd.Flags().StringP("entry-point", "e", "", "Command to run to start test")
@@ -63,68 +74,10 @@ func init() {
 	runCmd.MarkFlagRequired("pod-template")
 }
 
-func executeTest(cmd *cobra.Command) {
+func executeTest(testDriver ITestDriver) {
 	fmt.Println("executeTest called")
-	podTemplatePath, _ := cmd.Flags().GetString("pod-template")     //check err in the future, probably move it to separate function
-	namespace, _ := cmd.Flags().GetString("namespace")              //check err in the future, probably move it to separate function
-	localDirectory, _ := cmd.Flags().GetString("local-directory")   //check err in the future, probably move it to separate function
-	remoteDirectory, _ := cmd.Flags().GetString("remote-directory") //check err in the future, probably move it to separate function
-	entryPoint, _ := cmd.Flags().GetString("entry-point")           //check err in the future, probably move it to separate function
-	timeout, _ := cmd.Flags().GetString("timeout")                  //check err in the future, probably move it to separate function
-	failSilently, _ := cmd.Flags().GetBool("fail-silently")         //check err in the future, probably move it to separate function
-
-	createTestPod(podTemplatePath, namespace)
-	copyArtifactsToTestPod(localDirectory, remoteDirectory, podTemplatePath, namespace)
-	runTest(entryPoint, podTemplatePath, failSilently, namespace)
-	cleanUpResources(podTemplatePath, timeout, namespace)
-}
-
-func createTestPod(podTemplatePath string, namespace string) {
-	log.Println("Applying objects...")
-	cmd := exec.Command("kubectl", "apply", "-f", podTemplatePath, "-n", namespace)
-	stdout, _ := cmd.Output()
-	log.Println(string(stdout))
-
-	waitExec := exec.Command("kubectl", "wait", "--for=condition=Ready", fmt.Sprintf("pod/%s", getPodName(podTemplatePath)), "-n", namespace)
-	waitExecStdout, _ := waitExec.Output()
-	log.Println(string(waitExecStdout))
-}
-
-func copyArtifactsToTestPod(localDirectory string, remoteDirectory string, podTemplatePath string, namespace string) {
-	cmd := exec.Command("kubectl", "cp", localDirectory, fmt.Sprintf("%s:%s", getPodName(podTemplatePath), remoteDirectory), "-n", namespace)
-	stdout, _ := cmd.Output()
-	log.Println(string(stdout))
-}
-
-func runTest(entryPoint string, podtemplatePath string, failSilently bool, namespace string) {
-	fmt.Println("Running test...")
-	cmd := exec.Command("kubectl", "exec", "-it", "-n", namespace, getPodName(podtemplatePath), "--", "/bin/sh", "-c", entryPoint)
-	stdout, err := cmd.Output()
-	if err != nil && !failSilently {
-		log.Fatalf("Test entrypoint returned non-zero exit code: %s", err)
-	}
-	log.Println(string(stdout))
-}
-
-func cleanUpResources(podTemplatePath string, timeout string, namespace string) {
-	log.Printf("Testpod will be deleted in: %s", timeout)
-	duration, _ := time.ParseDuration(timeout)
-	time.Sleep(duration)
-	log.Println("Cleaning up test pod...")
-	cmd := exec.Command("kubectl", "delete", "pod", getPodName(podTemplatePath), "-n", namespace)
-	stdout, _ := cmd.Output()
-	log.Println(string(stdout))
-}
-
-type podtemplate struct {
-	Metadata struct {
-		Name string `yaml:"name"`
-	} `yaml:"metadata"`
-}
-
-func getPodName(podTemplatePath string) string {
-	yamlFile, _ := ioutil.ReadFile(podTemplatePath) //handle err in future
-	pod := &podtemplate{}
-	yaml.Unmarshal(yamlFile, pod)
-	return pod.Metadata.Name
+	testDriver.createTestPod()
+	testDriver.copyArtifactsToTestPod()
+	testDriver.runTest()
+	testDriver.cleanUpResources()
 }
